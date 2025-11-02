@@ -5,9 +5,6 @@
 import os
 import csv
 
-CSV_PATH = "catalogo.csv"
-ENCABEZADO = ["TITULO", "CANTIDAD"]
-
 # ----------------- Utilidades -----------------
 
 def normalizar_titulo(t):
@@ -42,41 +39,47 @@ def buscar_indice(catalogo, titulo):
         i += 1
     return -1
 
-def cargar_csv(ruta):
+def cargar_csv(ruta, encabezado):
     catalogo = []
     if os.path.exists(ruta):
         with open(ruta, "r", newline="", encoding="utf-8") as f:
             lector = csv.reader(f)
             filas = list(lector)
-            # Validar encabezado básico
-            if len(filas) > 0:
-                # si hay encabezado, empezar en 1; si no, desde 0
-                inicio = 1 if filas[0] == ENCABEZADO else 0
-                i = inicio
-                while i < len(filas):
-                    fila = filas[i]
-                    if len(fila) == 2:
-                        t = normalizar_titulo(fila[0])
-                        c = fila[1].strip()
-                        if t != "" and c.isdigit():
-                            # Si repite título, no lo duplica; conserva primer aparición
-                            if not existe_titulo(catalogo, t):
-                                catalogo.append({"TITULO": t, "CANTIDAD": int(c)})
-                    i += 1
+
+        # Validar encabezado (tolerante a espacios y mayúsculas/minúsculas)
+        if len(filas) > 0:
+            head_csv = [h.strip().upper() for h in filas[0]]
+            head_ref = [h.strip().upper() for h in encabezado]
+            inicio = 1 if head_csv == head_ref else 0
+        else:
+            inicio = 0
+
+        i = inicio
+        while i < len(filas):
+            fila = filas[i]
+            if len(fila) == 2:
+                t = normalizar_titulo(fila[0])
+                c = fila[1].strip()
+                if t != "" and c.isdigit():
+                    # Si repite título, no lo duplica; conserva primer aparición
+                    if not existe_titulo(catalogo, t):
+                        catalogo.append({"TITULO": t, "CANTIDAD": int(c)})
+            i += 1
     return catalogo
 
-def guardar_csv(ruta, catalogo):
+def guardar_csv(ruta, encabezado, catalogo):
+    """Guarda el catálogo en CSV. Siempre escribe el encabezado."""
     with open(ruta, "w", newline="", encoding="utf-8") as f:
-        escritor = csv.writer(f)
-        escritor.writerow(ENCABEZADO)
-        i = 0
-        while i < len(catalogo):
-            escritor.writerow([catalogo[i]["TITULO"], catalogo[i]["CANTIDAD"]])
-            i += 1
+        writer = csv.writer(f)
+        # encabezado: ej. ["TITULO", "CANTIDAD"]
+        writer.writerow(encabezado)
+        for item in catalogo:
+            writer.writerow([item["TITULO"], item["CANTIDAD"]])
 
-def confirmar_guardado(catalogo):
-    guardar_csv(CSV_PATH, catalogo)
-    print("✅ Cambios guardados en", CSV_PATH)
+
+def confirmar_guardado(ruta, catalogo, encabezado):
+    guardar_csv(catalogo)
+    print("✅ Cambios guardados en", catalogo)
 
 # ----------------- Funcionalidades -----------------
 
@@ -236,7 +239,10 @@ def op7_actualizar_prestamo_devolucion(catalogo):
 # ----------------- Programa principal -----------------
 
 def main():
-    catalogo = cargar_csv(CSV_PATH)
+    RUTA = "catalogo.csv"
+    ENCABEZADO = ["TITULO", "CANTIDAD"]
+
+    catalogo = cargar_csv(RUTA, ENCABEZADO)
 
     opcion = ""
     while True:
@@ -271,6 +277,7 @@ def main():
             case "8":
                 confirmar = input("¿Seguro que deseas salir del sistema? (s/n): ").strip().lower()
                 if confirmar == "s":
+                    guardar_csv(RUTA, ENCABEZADO, catalogo)
                     print("Saliendo del sistema... 👋")
                     break
                 else:
